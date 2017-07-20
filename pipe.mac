@@ -1,0 +1,262 @@
+fini
+/cle
+/prep7
+
+!--VARIABLES--!
+*afun,rad					!switch to radians
+pi		 = acos(-1)			!define pi
+
+!linear sizes (mm)
+chan_h   = 1.080		!height of flue channel
+labium_x = 0.400		!labium placement leng.
+labium_y = 4.020		!labium placement width
+pipe_h   = 20.00		!pipe height inner vol.
+wall_w   = 5.000		!pipe in.wall thickness
+pipe_l   = 283.0		!pipe length
+!auxiliary delta for the sake of readability
+auxdelta = chan_h/2-labium_x
+
+!angular sizes (deg)
+labium_a = 15.00		!labium wedge angle
+
+!outer air amount (temporary? - probably not)
+out_air	 = 4*pipe_h
+
+!extrusion options
+v_div	 = 2			!number of vertical elements 
+
+!element size for meshing
+e_size	 = 0.500
+
+!add mesh concentration towards walls
+enable_c = 0			!obviously
+conc_str = 5			!concentration strength
+
+!--GEOMETRY--!
+	!flue channel
+blc4,-pipe_h,chan_h,pipe_h,wall_w
+blc4,-pipe_h,0,pipe_h,-pipe_h
+	!pipe wall, bottom
+blc4,-pipe_h,-pipe_h,pipe_l+pipe_h,-wall_w
+	!open end flanges
+blc4,pipe_l,wall_w+auxdelta,-pipe_h,pipe_h
+blc4,pipe_l,-pipe_h-wall_w,-pipe_h,-pipe_h
+asel,none
+	!pipe wall, top
+blc4,labium_y,auxdelta,pipe_l-labium_y,wall_w
+	!cutting the labium
+wpof,labium_y,auxdelta
+wpro,,90
+wpro,,,labium_a
+asbw,all
+csys,4
+asel,r,loc,z,0,-wall_w
+adele,all,,,1
+csys,0
+wpcsys,-1
+numcmp,all
+	!cutting it all out of air
+	!channel and labium zone
+blc4,0,-pipe_h-wall_w,out_air,2*pipe_h+2*wall_w+auxdelta
+	!inside the pipe
+blc4,out_air,-pipe_h-wall_w,pipe_l-out_air,pipe_h+2*wall_w
+	!outside the pipe
+blc4,pipe_l,-pipe_h,pipe_l,pipe_h+auxdelta
+	!around flanges (unused for now)
+!blc4,pipe_l-pipe_h,-2*pipe_h-wall_w,pipe_h,3*pipe_h+2*wall_w+auxdelta
+cm,air,area
+asel,inve
+cm,wall,area
+allsel
+asba,air,wall
+numcmp,all
+allsel
+
+	!dissecting the air near labium
+wprot,,,90
+wpoffs,,,labium_y
+asbw,all
+wpoffs,,,wall_w/tan(pi/12)
+asbw,all
+	!scale outer air (X dir by 0.5)
+	!TODO: probably shouldn't be hardcoded
+csys,4
+asel,s,loc,z,0,pipe_l
+asel,r,loc,y,0,pipe_l
+*get,areanum,area,0,num,min
+arscale,all,,,1,1,0.5,,0,0
+adele,areanum,,,1
+asel,s,loc,z,-pipe_h,pipe_l
+asel,r,loc,y,0,pipe_l
+aglue,all 
+csys,0
+allsel
+wpcsys,-1
+
+	!TODO: add case with auxdelta = 0 to the 'rest of
+	!+	   the pipe' & 'bottom of the pipe' sections
+*if,enable_c,eq,1,then
+	!inner air
+	wprot,-90,,-90
+	wpoffs,,,auxdelta
+	asbw,all
+	wpoffs,,,-auxdelta-pipe_h/2
+	asbw,all
+	wpoffs,,pipe_l+pipe_h/2		!change pipe_h/2?
+	wprot,,90
+	asbw,all
+	nummrg,all
+		!near passive opening
+	lsel,s,loc,x,pipe_l,pipe_l+pipe_h/2
+	lsel,u,loc,x,pipe_l+pipe_h/2
+	lsel,u,loc,y,-pipe_h/2
+	lesize,all,,,pipe_h/e_size,conc_str
+		!even mesh behind the pipe
+	lsel,s,loc,x,pipe_l+pipe_h/2
+	lesize,all,,,pipe_h/e_size,1
+		!rest of the pipe
+		!first find out the line near flue channel
+	lsel,s,loc,x,0
+	lsel,r,loc,y,-pipe_h/4
+	*get,lbr1,line,,num,min
+		!then exclude it
+	lsel,s,loc,x,0,out_air
+	lsel,r,loc,y,0,-pipe_h
+	lsel,u,loc,y,-pipe_h/2
+	lsel,u,loc,y,-pipe_h
+	lsel,u,line,,lbr1
+	lesize,all,,,pipe_h/e_size,conc_str
+		!bottom of the pipe
+		!'labium_y' line needs 1/conc_str
+	lsel,s,loc,x,labium_y/2
+	lsel,r,loc,y,auxdelta
+	lesize,all,,,pipe_h,1/conc_str	!'pipe_h' subject to change?
+		!other lines are fine
+	lsel,s,loc,x,labium_y/2
+	lsel,u,loc,y,auxdelta
+	lesize,all,,,pipe_h,conc_str	!once again, see prev comment
+	
+	!outer air
+	!one line is broken as well
+	lsel,s,loc,y,wall_w,wall_w+pipe_h
+	lsel,u,loc,x,2*out_air/5,3*out_air/5 
+	lsel,u,loc,x,0
+	cm,temp,line
+	lsel,u,loc,x,2*pipe_h,4*pipe_h	
+	lesize,all,,,2*pipe_h/e_size,conc_str
+	cmsel,s,temp
+	lsel,r,loc,x,2*pipe_h,4*pipe_h	
+	lesize,all,,,2*pipe_h/e_size,1/conc_str
+	cmdele,temp
+*endif
+
+	!concatenation
+*if,enable_c,eq,1,then
+	lsel,s,loc,x,0
+	lsel,r,loc,y,auxdelta,pipe_l
+	lccat,all
+	lsel,s,loc,x,0
+	lsel,r,loc,y,auxdelta,-pipe_h/2-auxdelta
+	lccat,all
+	!case with flanges is omitted for now
+*else
+	lsel,s,loc,x,0
+	lccat,all
+	lsel,s,loc,x,labium_y
+	lccat,all
+	!lsel,s,loc,x,pipe_l
+	!lccat,all
+*endif
+allsel
+
+!--MESHING--!
+	
+	!select flat mesh200
+et,1,200,6		!define etype 1
+esize,e_size
+	!mesher options
+mshape,0,2D		!quadrilaterals
+mshkey,1		!mapped only
+amesh,all
+
+lsel,s,lcca
+ldele,all
+allsel
+
+et,2,200,10		!define etype 2
+extopt,esize,v_div,1
+vext,all,,,,,e_size*v_div
+
+nummrg,all
+numcmp,all
+
+	!components for future boundaries
+asel,s,loc,x,0
+asel,r,loc,y,0,chan_h
+nsla,s,1
+cm,inlet,node
+
+asel,s,loc,x,0
+asel,u,loc,y,0,chan_h
+asel,u,loc,y,chan_h+wall_w,pipe_l
+nsla,s,1
+cm,wall1,node
+
+asel,s,loc,x,labium_y,pipe_l
+asel,r,loc,y,0,wall_w+auxdelta
+nsla,s,1
+cm,wall2,node
+
+asel,s,loc,x,0,pipe_l
+asel,r,loc,y,-pipe_h
+nsla,s,1
+cm,wall3,node
+
+asel,s,loc,x,0
+asel,r,loc,y,chan_h+wall_w,pipe_l
+asel,a,loc,y,pipe_h,pipe_l
+cm,temp,area
+asel,s,loc,x,out_air/2,2*out_air/3
+asel,r,loc,y,wall_w,pipe_l
+cmsel,a,temp
+nsla,s,1
+cm,opening1,node
+cmdele,temp
+
+asel,s,loc,x,pipe_l,10*pipe_l
+asel,u,loc,y,0,-3*pipe_h/4
+asel,a,loc,x,2*pipe_l
+nsla,s,1
+cm,opening2,node
+
+asel,s,loc,x,pipe_l
+nsla,s,1
+cm,source,node
+
+asel,s,loc,z,0
+nsla,s,1
+cm,symmetry1,node
+
+asel,s,loc,z,e_size*v_div
+nsla,s,1
+cm,symmetry2,node
+
+	!view the results before writing to cdb
+debug = 0
+*if,debug,eq,1,then
+	nsel,none
+	cmsel,s,inlet
+	cmsel,a,wall1
+	cmsel,a,wall2
+	cmsel,a,wall3
+	cmsel,a,opening1
+	cmsel,a,opening2
+	cmsel,a,source
+	cmsel,a,symmetry1
+	cmsel,a,symmetry2
+	nplo
+*endif
+
+allsel
+
+cdwrite,db,pipe,cdb

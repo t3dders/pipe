@@ -1,0 +1,23 @@
+# Session file started:  2017/05/20 16:54:14
+# CFX-15.0 build 2013.10.10-08.49-130242
+
+COMMAND FILE:
+  CFX Pre Version = 15.0
+END
+
+>load mode=new
+
+>importccl filename=D:\ANSYS\pipe\pipe.ccl, mode = replace, \
+autoLoadLibrary = none
+
+> gtmImport filename=D:\ANSYS\pipe\pipe.cdb, type=ANSYS, \
+units=mm, genOpt= -n, nameStrategy= Assembly
+
+>writeCaseFile filename=D:/ANSYS/pipe/pipe.def,operation=\
+write solver file
+
+>writeCaseFile filename=D:/ANSYS/pipe/pipe.cfx
+
+>close, deleteLibrary = On
+
+# Session file stopped:  2017/05/20 16:55:54

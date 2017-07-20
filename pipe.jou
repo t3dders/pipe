@@ -1,0 +1,106 @@
+; FLUENT journal master file, thoroughly commented (thank me later)
+
+; ------------
+; PREPARATIONS
+; ------------
+; Import .def file from cfx: create zones out of cfx physics (obviously yes)
+/file/import/cfx/definition yes "D:\ANSYS Inc\self\2017\diploma\cfx\pipe.def" 
+
+; Transient analysis with bounded second order implicit formulation
+; (necessary for LES & DES)
+/define/models/unsteady-2nd-order-bounded? yes
+
+; LES-WALE viscous model
+/define/models/viscous/large-eddy-simulation? yes 
+/define/models/viscous/les-subgrid-wale? yes 
+
+; ---------
+; ACOUSTICS
+; ---------
+; Not sure about the necessity of "off" line, commented for now
+; /define/models/acoustics/off? n 
+
+; Export source data in cgns format
+/define/models/acoustics/export-source-data-cgns? yes
+
+; Use Ffowcs-Williams Hawkings model: enable, compute simultaneously, 
+;	write source data, far-field density, sound speed, ref. acoustic pressure
+/define/models/acoustics/ffowcs-williams? yes yes yes 1.2 343.391 2e-05 
+
+; Define sources (parentheses end the list): zones, write freq. (ts), ts per file, filename
+/define/models/acoustics/sources wall () 2 500 "source" 
+;/define/models/acoustics/sources () 2 600 "source" 
+;/define/models/acoustics/sources wall default-interior () 1 500 "" "q" 
+
+; Define receivers: number, X, Y, Z, filename
+/define/models/acoustics/receivers 1 0.33325 -0.01 0.0005 "receiver-1.ard" 
+
+; ---------------------------------------------------
+; BOUNDARY CONDITIONS: inlet, opening, symmetry, wall
+; ---------------------------------------------------
+; SYMMETRY is easy: zone
+/define/boundary-conditions/symmetry symmetry
+
+; WALL: zone, wall motion (change cur. val.), shear condition (change cur. val.)
+/define/boundary-conditions/wall wall no no 
+
+; PRESSURE: zone, use profile for gauge pres., gauge pres., backflow dir. spec. method - 
+; direction vector, BSDM - normal to boundary, the rest is irrelevant for now (see help)
+/define/boundary-conditions/pressure-outlet opening no 0 no yes no no no 
+
+; INLET: zone, vel. spec. method - mag&dir, VSM - components, VSM - mag&normal,
+; ref. frame - absolute, use profile for mag, mag (speed), use profile for gauge pres., 
+; supersonic/initial gauge pres., fluctuating velocity algorithm - no perturbations
+/define/boundary-conditions/velocity-inlet inlet no no yes yes no 10 no 0 yes 
+
+; ---------
+; MATERIALS
+; ---------
+; Change density (1.2) and viscosity (1.5e-05) (skip the rest)
+/define/materials/change-create air air yes constant 1.2 no no yes constant 1.5e-05 no no no 
+
+; ----------------
+; SOLUTION CONTROL
+; ----------------
+; Second Order pressure discretization
+/solve/set/discretization-scheme/pressure 12
+
+; SIMPLE scheme for pressure-velocity coupling
+/solve/set/p-v-coupling 20
+
+; Initial values just in case they aren't set automatically
+	;/solve/initialize/set-defaults/pressure 0
+	;/solve/initialize/set-defaults/x-velocity 0
+	;/solve/initialize/set-defaults/y-velocity 0
+	;/solve/initialize/set-defaults/z-velocity 0
+	
+; Same for reference values (needed for post-processing only)
+/report/reference-values/area 1
+/report/reference-values/density 1.2
+/report/reference-values/length 1
+/report/reference-values/pressure 0
+/report/reference-values/temperature 293.45
+/report/reference-values/velocity 1
+/report/reference-values/viscosity 1.5e-05
+	
+; Surface monitor: get info on cool stuff etc.
+; First define surface (I'm using a point for now): name, X, Y, Z
+/surface/point-surface p-1 0.33325 -0.01 0.0005 
+
+; Now attach monitor to it: name, report type, field variable, point, plot, print, write,
+; filename, freq., timestep, x-axis
+/solve/monitors/surface/set-monitor surf-mon-1 "Integral" pressure p-1 () no yes yes "surf-mon-1.out" 2 yes flow-time 
+
+; NB DONT SKIP
+; DO automatic export HERE
+; NOW SKIP
+
+; Setup final parameters
+; Time-step resolution (s)
+/solve/set/time-step 0.00005 
+
+; Number of time-steps
+/solve/set/number-of-time-steps 2000 
+
+; Specify iterations per timestep, reporting interval, this and that, and then finally
+; SOLVE

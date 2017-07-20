@@ -1,0 +1,117 @@
+# State file created:  2017/05/19 15:34:10
+# CFX-15.0 build 2013.10.10-08.49-130242
+
+FLOW: Flow Analysis 1
+  SOLUTION UNITS:
+    Angle Units = [rad]
+    Length Units = [m]
+    Mass Units = [kg]
+    Solid Angle Units = [sr]
+    Temperature Units = [K]
+    Time Units = [s]
+  END
+  ANALYSIS TYPE:
+    Option = Steady State
+    EXTERNAL SOLVER COUPLING:
+      Option = None
+    END
+  END
+  DOMAIN: air
+    Coord Frame = Coord 0
+    Domain Type = Fluid
+    Location = Primitive 3D
+    BOUNDARY: inlet
+      Boundary Type = INLET
+      Location = INLET
+      BOUNDARY CONDITIONS:
+        FLOW REGIME:
+          Option = Subsonic
+        END
+        MASS AND MOMENTUM:
+          Normal Speed = 10 [m s^-1]
+          Option = Normal Speed
+        END
+        TURBULENCE:
+          Option = Medium Intensity and Eddy Viscosity Ratio
+        END
+      END
+    END
+    BOUNDARY: opening
+      Boundary Type = OPENING
+      Location = OPENING1,OPENING2
+      BOUNDARY CONDITIONS:
+        FLOW DIRECTION:
+          Option = Normal to Boundary Condition
+        END
+        FLOW REGIME:
+          Option = Subsonic
+        END
+        MASS AND MOMENTUM:
+          Option = Opening Pressure and Direction
+          Relative Pressure = 0 [Pa]
+        END
+        TURBULENCE:
+          Option = Medium Intensity and Eddy Viscosity Ratio
+        END
+      END
+    END
+    BOUNDARY: symmetry
+      Boundary Type = SYMMETRY
+      Location = SYMMETRY1,SYMMETRY2
+    END
+    BOUNDARY: wall
+      Boundary Type = WALL
+      Location = WALL1,WALL2,WALL3
+      BOUNDARY CONDITIONS:
+        MASS AND MOMENTUM:
+          Option = No Slip Wall
+        END
+        WALL ROUGHNESS:
+          Option = Smooth Wall
+        END
+      END
+    END
+    DOMAIN MODELS:
+      BUOYANCY MODEL:
+        Option = Non Buoyant
+      END
+      DOMAIN MOTION:
+        Option = Stationary
+      END
+      MESH DEFORMATION:
+        Option = None
+      END
+      REFERENCE PRESSURE:
+        Reference Pressure = 1 [atm]
+      END
+    END
+    FLUID DEFINITION: Fluid 1
+      Material = Air at 25 C
+      Option = Material Library
+      MORPHOLOGY:
+        Option = Continuous Fluid
+      END
+    END
+    FLUID MODELS:
+      COMBUSTION MODEL:
+        Option = None
+      END
+      HEAT TRANSFER MODEL:
+        Fluid Temperature = 25 [C]
+        Option = Isothermal
+      END
+      THERMAL RADIATION MODEL:
+        Option = None
+      END
+      TURBULENCE MODEL:
+        Option = k epsilon
+      END
+      TURBULENT WALL FUNCTIONS:
+        Option = Scalable
+      END
+    END
+  END
+END
+COMMAND FILE:
+  Version = 15.0
+END
